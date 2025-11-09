@@ -1,0 +1,60 @@
+pipeline 
+    agent any
+
+    stages {
+        stage('Download') {
+            steps {
+                git branch: 'test', url: 'https://github.com/clouddevopseng/9am-new-project.git'
+            }
+        }
+
+        stage('Artifacts convert') {
+            steps {
+                sh 'mvn package'
+            }
+        }
+
+        stage('Deploy into tomcat container') {
+            steps {
+                deploy adapters: [
+                    tomcat9(
+                        credentialsId: '688da7d5-53af-4485-adb8-76a4c381692d',
+                        path: '',
+                        url: 'http://172.31.31.202:8080'
+                    )
+                ],
+                contextPath: '/business-application-test',
+                war: '**/*.war'
+            }
+        }
+
+        stage('Send Success Email') {
+            steps {
+                emailext(
+                    subject: "Build Success: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                    body: """
+                        <p>The Jenkins build was successful: <b>${env.JOB_NAME}</b> #${env.BUILD_NUMBER}</p>
+                        <p>Check console output at: <a href="${env.BUILD_URL}">${env.BUILD_URL}</a></p>
+                    """,
+                    to: 'sainathreddymanapati@gmail.com',
+                    mimeType: 'text/html'
+                )
+            }
+        }
+    }
+
+    post {
+        failure {
+            emailext(
+                subject: "Build Failed: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                body: """
+                    <p>The Jenkins build failed: <b>${env.JOB_NAME}</b> #${env.BUILD_NUMBER}</p>
+                    <p>Check console output at: <a href="${env.BUILD_URL}">${env.BUILD_URL}</a></p>
+                """,
+                to: 'sainathreddymanapati@gmail.com',
+                mimeType: 'text/html'
+            )
+        }
+    }
+}
+
